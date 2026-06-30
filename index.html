@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Decaf — Caffeine Tracker</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <h1>☕ Decaf</h1>
+      <p class="tagline">Track your caffeine. Know when you'll sleep.</p>
+    </header>
+
+    <section class="cards">
+      <div class="card">
+        <span class="card-label">In your system</span>
+        <span class="card-value" id="current-level">0<span class="unit">mg</span></span>
+        <span class="card-sub" id="current-sub">all clear</span>
+      </div>
+      <div class="card">
+        <span class="card-label">Today</span>
+        <span class="card-value" id="daily-total">0<span class="unit">mg</span></span>
+        <div class="meter"><div class="meter-fill" id="daily-meter"></div></div>
+        <span class="card-sub" id="daily-sub">of 400mg limit</span>
+      </div>
+      <div class="card">
+        <span class="card-label">Sleep-ready by</span>
+        <span class="card-value" id="sleep-time">—</span>
+        <span class="card-sub" id="sleep-sub">under 50mg circulating</span>
+      </div>
+    </section>
+
+    <section class="chart-section">
+      <div class="chart-head">
+        <h2>Caffeine through the day</h2>
+        <span class="legend"><i class="dot dot-now"></i> now &nbsp; <i class="dot dot-sleep"></i> sleep threshold</span>
+      </div>
+      <canvas id="chart" width="900" height="240"></canvas>
+    </section>
+
+    <section class="log-section">
+      <div class="add-row">
+        <h2>Add a drink</h2>
+        <button class="link-btn" id="manage-btn" type="button" title="Settings">⚙︎ Settings</button>
+      </div>
+      <div class="presets" id="presets"></div>
+
+      <details class="custom">
+        <summary>Custom amount</summary>
+        <form class="custom-form" id="custom-form">
+          <input type="text" id="custom-name" placeholder="Drink name" required />
+          <input type="number" id="custom-mg" placeholder="mg" min="1" max="1000" required />
+          <button type="submit">Add</button>
+        </form>
+      </details>
+
+      <h2 class="history-title">Today's log</h2>
+      <ul class="history" id="history"></ul>
+    </section>
+
+    <dialog id="settings-dialog" class="dialog">
+      <form method="dialog" class="dialog-form" id="settings-form">
+        <h2>Settings</h2>
+        <label>Daily limit (mg)
+          <input type="number" id="set-limit" min="50" max="2000" step="10" />
+        </label>
+        <label>Caffeine half-life (hours)
+          <input type="number" id="set-halflife" min="2" max="10" step="0.5" />
+        </label>
+        <label>Sleep threshold (mg)
+          <input type="number" id="set-threshold" min="10" max="200" step="5" />
+        </label>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" id="clear-today">Clear today's log</button>
+          <button value="save">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <footer class="footer">
+      Estimates only — caffeine metabolism varies by person. Data is stored locally in your browser.
+    </footer>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
