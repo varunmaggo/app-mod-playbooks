@@ -1,0 +1,34 @@
+apiVersion: rds.services.k8s.aws/v1alpha1
+kind: DBInstance
+metadata:
+  name: ${{ values.appName }}-db
+  namespace: ${{ values.namespace }}
+spec:
+  dbInstanceIdentifier: ${{ values.appName }}-db
+  dbInstanceClass: ${{ values.dbInstanceClass }}
+  engine: postgres
+  engineVersion: "16.3"
+  allocatedStorage: ${{ values.dbStorageGb }}
+  storageType: gp3
+  dbSubnetGroupName: ${{ values.appName }}-subnet-group
+  vpcSecurityGroupIDs:
+    - ${{ values.dbSecurityGroupId }}
+  masterUsername: ${{ values.appName }}admin
+  # ACK generates and rotates the master password, writing it to this Secrets
+  # Manager secret; the ExternalSecret above reads it back into the cluster.
+  masterUserPassword:
+    secretKeyRef:
+      name: ${{ values.appName }}-db-master-secret
+      namespace: ${{ values.namespace }}
+      key: password
+  manageMasterUserPassword: true
+  backupRetentionPeriod: 7
+  multiAZ: ${{ values.dbMultiAz }}
+  storageEncrypted: true
+  publiclyAccessible: false
+  deletionProtection: ${{ values.dbDeletionProtection }}
+  tags:
+    - key: app
+      value: ${{ values.appName }}
+    - key: managed-by
+      value: app-mod-factory

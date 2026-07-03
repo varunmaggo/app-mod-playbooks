@@ -1,0 +1,56 @@
+name: dotnet-api
+displayName: Legacy .NET API Modernization
+description: >
+  Modernizes a legacy .NET API onto the hub EKS cluster with Argo Rollouts
+  blue-green progressive delivery and automated OIDC client registration
+  against the shared Keycloak realm. Self-contained: no manual promotion or
+  Keycloak admin console steps are required.
+
+provisions:
+  - Multi-stage Docker image (dotnet SDK build -> aspnet runtime, non-root)
+  - Argo Rollouts blue-green Rollout + active/preview Services
+  - KeycloakClient CRD registering an OIDC client in the shared realm
+  - ExternalSecret republishing the Keycloak-Operator-generated client secret
+  - NetworkPolicy restricting egress to the Keycloak namespace + DNS
+  - Kustomize overlays for dev / staging / prod (auto- vs manual-promotion)
+
+requiredParameters:
+  - name: appName
+    description: Name of the application; used for k8s resource names and OIDC client ID.
+    type: string
+  - name: namespace
+    description: Base Kubernetes namespace (env suffix appended per overlay).
+    type: string
+  - name: imageRepository
+    description: Container image repository the built image is pushed to.
+    type: string
+  - name: imageTag
+    description: Container image tag to deploy.
+    type: string
+  - name: keycloakRealm
+    description: Name of the shared Keycloak realm this client registers into.
+    type: string
+  - name: keycloakRealmUrl
+    description: OIDC issuer/authority URL for the Keycloak realm.
+    type: string
+  - name: keycloakNamespace
+    description: Namespace the Keycloak server runs in (for NetworkPolicy egress).
+    type: string
+  - name: oidcRedirectUri
+    description: OIDC redirect URI registered for this client.
+    type: string
+  - name: oidcWebOrigin
+    description: Allowed web origin (CORS) for this OIDC client.
+    type: string
+  - name: prodReplicaCount
+    description: Number of Rollout replicas in the prod overlay.
+    type: number
+    example: 3
+
+guardrail: >
+  Playbook Encapsulation: this playbook must contain everything needed for its
+  concern. The Rollout, active/preview Services, and Keycloak OIDC client
+  registration all ship together — nothing is deployed by a manual kubectl or
+  Keycloak admin console step after Backstage stamps this into
+  apps/<appName>/. Prod uses a manual promotion gate
+  (autoPromotionEnabled: false); dev/staging auto-promote.

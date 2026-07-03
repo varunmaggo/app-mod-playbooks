@@ -1,0 +1,12 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: app-mod-factory
+spec:
+  promotionPolicies:
+    - stage: prod
+      autoPromotionEnabled: false # prod promotion requires manual approval in Kargo UI/CLI
+    - stage: staging
+      autoPromotionEnabled: true
+    - stage: dev
+      autoPromotionEnabled: true

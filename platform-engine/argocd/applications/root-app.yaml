@@ -1,0 +1,26 @@
+# App-of-Apps root: bootstraps the ApplicationSet, Kyverno policies, and
+# Kargo project/config as Argo CD-managed resources. Applied once by hand
+# during cluster bootstrap; every subsequent change flows through git.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-engine-root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/app-mod-playbooks.git
+    targetRevision: main
+    path: platform-engine
+    directory:
+      recurse: true
+      include: "{argocd/applicationsets/*,kyverno/policies/*,kargo/*}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

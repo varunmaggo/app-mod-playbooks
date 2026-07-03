@@ -1,0 +1,40 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: app-mod-factory-templates
+  description: Software Templates for the Application Modernization Factory
+spec:
+  targets:
+    - ./templates/java-heavy-monolith/template.yaml
+    - ./templates/dotnet-legacy-api/template.yaml
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: app-mod-playbooks-factory
+  title: Application Modernization Factory
+  description: >-
+    The GitOps monorepo behind the Application Modernization Factory: hub
+    EKS infrastructure, the Argo CD / Kargo / Kyverno platform engine, and
+    the java-heavy and dotnet-api playbooks scaffolded by this Backstage
+    instance.
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - url: ../infra
+      title: Hub EKS infrastructure (Terraform)
+    - url: ../platform-engine
+      title: Platform engine (Argo CD, Kargo, Kyverno)
+    - url: ../playbooks
+      title: Playbook skeletons
+  tags:
+    - eks
+    - gitops
+    - backstage
+    - argocd
+    - kargo
+    - kyverno
+spec:
+  type: service
+  lifecycle: experimental
+  owner: platform-engineering

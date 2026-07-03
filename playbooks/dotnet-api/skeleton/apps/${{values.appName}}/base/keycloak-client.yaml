@@ -1,0 +1,33 @@
+# Registers this API as an OIDC client in the shared Keycloak realm, using the
+# Keycloak Operator's KeycloakClient CRD. The Operator's controller reconciles
+# this into a real client registration via the Keycloak Admin REST API — no
+# manual `kcadm.sh` step is required.
+apiVersion: keycloak.org/v1alpha1
+kind: KeycloakClient
+metadata:
+  name: ${{ values.appName }}-client
+  namespace: ${{ values.namespace }}
+  labels:
+    app: ${{ values.appName }}
+spec:
+  realmSelector:
+    matchLabels:
+      realm: ${{ values.keycloakRealm }}
+  client:
+    clientId: ${{ values.appName }}-api
+    name: ${{ values.appName }} API
+    enabled: true
+    protocol: openid-connect
+    publicClient: false
+    standardFlowEnabled: true
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: true
+    redirectUris:
+      - ${{ values.oidcRedirectUri }}
+    webOrigins:
+      - ${{ values.oidcWebOrigin }}
+    secret: "" # left blank: Operator generates it and syncs to a Secret named ${{ values.appName }}-client-secret
+    defaultClientScopes:
+      - profile
+      - email
+      - roles
