@@ -1,0 +1,66 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: ${{ values.appName }}
+  namespace: ${{ values.namespace }}
+  labels:
+    app: ${{ values.appName }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: ${{ values.appName }}
+  template:
+    metadata:
+      labels:
+        app: ${{ values.appName }}
+    spec:
+      serviceAccountName: ${{ values.appName }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: ${{ values.appName }}
+          image: ${{ values.imageRepository }}:${{ values.imageTag }}
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: OIDC_AUTHORITY
+              value: ${{ values.keycloakRealmUrl }}
+            - name: OIDC_CLIENT_ID
+              value: ${{ values.appName }}-api
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ${{ values.appName }}-oidc-client-secret
+                  key: clientSecret
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+  strategy:
+    blueGreen:
+      # Two Services are required: `activeService` keeps serving current
+      # production traffic to the stable ReplicaSet while `previewService`
+      # exposes the new ReplicaSet for smoke-testing before promotion — this
+      # is what makes the cutover instant and safely reversible.
+      activeService: ${{ values.appName }}-active
+      previewService: ${{ values.appName }}-preview
+      autoPromotionEnabled: true
+      scaleDownDelaySeconds: 30
+      previewReplicaCount: 1

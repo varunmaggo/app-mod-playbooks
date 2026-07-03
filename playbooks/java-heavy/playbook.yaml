@@ -1,0 +1,68 @@
+name: java-heavy
+displayName: Heavy-Duty Java Monolith
+description: >
+  Lifts a legacy Java monolith onto the hub EKS cluster with a dedicated,
+  self-provisioned Amazon RDS (Postgres) instance. Bundles container image
+  build, IRSA-bound ServiceAccount, External Secrets Operator wiring for DB
+  credentials, and ACK-managed RDS provisioning in one self-contained unit.
+
+provisions:
+  - Multi-stage Docker image (Maven build -> JRE runtime, non-root, healthcheck)
+  - Kubernetes Deployment + Service
+  - IRSA-annotated ServiceAccount (role provisioned in /infra)
+  - ESO SecretStore + ExternalSecret pulling DB creds from AWS Secrets Manager
+  - ACK DBSubnetGroup + DBInstance (dedicated RDS Postgres instance per app)
+  - Kustomize overlays for dev / staging / prod
+
+requiredParameters:
+  - name: appName
+    description: Name of the application; used for k8s resource names, RDS identifier, and Secrets Manager path.
+    type: string
+  - name: namespace
+    description: Base Kubernetes namespace (env suffix appended per overlay).
+    type: string
+  - name: imageRepository
+    description: Container image repository the built image is pushed to.
+    type: string
+  - name: imageTag
+    description: Container image tag to deploy.
+    type: string
+  - name: awsAccountId
+    description: AWS account ID hosting the IRSA role.
+    type: string
+  - name: awsRegion
+    description: AWS region for Secrets Manager and RDS.
+    type: string
+  - name: dbInstanceClass
+    description: RDS instance class used as the prod-sized default (dev/staging patch to smaller classes).
+    type: string
+    example: db.r6g.large
+  - name: dbStorageGb
+    description: Allocated storage (GiB) for RDS, prod default.
+    type: number
+    example: 100
+  - name: dbMultiAz
+    description: Whether the base RDS spec defaults to Multi-AZ (typically overridden per-env).
+    type: boolean
+  - name: dbDeletionProtection
+    description: Whether the base RDS spec defaults to deletion protection (typically overridden per-env).
+    type: boolean
+  - name: dbSecurityGroupId
+    description: VPC security group ID allowing app -> RDS traffic (from /infra).
+    type: string
+  - name: privateSubnetIdA
+    description: First private subnet ID for the RDS subnet group (from /infra).
+    type: string
+  - name: privateSubnetIdB
+    description: Second private subnet ID for the RDS subnet group (from /infra).
+    type: string
+  - name: prodReplicaCount
+    description: Number of Deployment replicas in the prod overlay.
+    type: number
+    example: 3
+
+guardrail: >
+  Playbook Encapsulation: this playbook must contain everything needed for its
+  concern. No manual kubectl or aws CLI step is required after Backstage stamps
+  it into apps/<appName>/ — Argo CD reconciles the Deployment, Service, ESO
+  resources, and ACK RDS resources together.

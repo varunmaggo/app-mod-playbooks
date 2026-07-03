@@ -1,0 +1,11 @@
+apiVersion: rds.services.k8s.aws/v1alpha1
+kind: DBSubnetGroup
+metadata:
+  name: ${{ values.appName }}-subnet-group
+  namespace: ${{ values.namespace }}
+spec:
+  name: ${{ values.appName }}-subnet-group
+  description: Private subnets for ${{ values.appName }} RDS instance
+  subnetIDs:
+    - ${{ values.privateSubnetIdA }}
+    - ${{ values.privateSubnetIdB }}

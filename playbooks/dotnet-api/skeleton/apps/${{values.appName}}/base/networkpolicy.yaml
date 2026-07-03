@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ${{ values.appName }}-egress-keycloak
+  namespace: ${{ values.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: ${{ values.appName }}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ${{ values.keycloakNamespace }}
+      ports:
+        - protocol: TCP
+          port: 8443
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

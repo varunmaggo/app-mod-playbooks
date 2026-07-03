@@ -1,0 +1,218 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: java-heavy-monolith
+  title: Modernize a Java Monolith onto EKS with a dedicated RDS database
+  description: >-
+    Scaffolds a containerized Spring Boot workload onto the hub EKS cluster,
+    complete with a dedicated ACK-provisioned RDS PostgreSQL instance,
+    External Secrets Operator wiring for DB credentials, and per-environment
+    Kustomize overlays. This is the only supported path for onboarding a
+    java-heavy monolith into the Application Modernization Factory - no
+    hand-written manifests, no manual `kubectl apply`, no manual `aws rds
+    create-db-instance`.
+  tags:
+    - java
+    - spring-boot
+    - eks
+    - rds
+    - modernization
+spec:
+  owner: platform-engineering
+  type: service
+  parameters:
+    - title: Application Details
+      required:
+        - appName
+        - namespace
+        - environments
+        - owner
+      properties:
+        appName:
+          title: Application Name
+          type: string
+          description: >-
+            Kebab-case name for the application. Used as the Kubernetes
+            resource name prefix, the RDS instance identifier, and the
+            instance directory under playbooks/java-heavy/instances/.
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        namespace:
+          title: Target Namespace
+          type: string
+          description: Kubernetes namespace the workload will be deployed into.
+          default: default
+        environments:
+          title: Environments to Deploy To
+          type: array
+          description: >-
+            Environments to scaffold overlays for. Kargo promotes changes
+            dev -> staging -> prod across whichever of these are selected.
+          items:
+            type: string
+            enum:
+              - dev
+              - staging
+              - prod
+          default:
+            - dev
+            - staging
+            - prod
+          uniqueItems: true
+          ui:widget: checkboxes
+        owner:
+          title: Owner / Team
+          type: string
+          description: Team that will own this component in the Backstage catalog.
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+    - title: Database Configuration
+      required:
+        - dbInstanceSize
+        - dbStorageGb
+      properties:
+        dbInstanceSize:
+          title: Database Instance Size
+          type: string
+          description: >-
+            Maps to a real RDS instance class. ACK's RDS controller
+            provisions a dedicated PostgreSQL instance at this size.
+          enum:
+            - db.t3.medium
+            - db.r6g.large
+            - db.r6g.2xlarge
+          enumNames:
+            - 'Small (db.t3.medium)'
+            - 'Medium (db.r6g.large)'
+            - 'Large (db.r6g.2xlarge)'
+          default: db.t3.medium
+        dbStorageGb:
+          title: Database Storage (GB)
+          type: integer
+          description: Allocated storage for the RDS instance, in gigabytes.
+          default: 50
+          minimum: 20
+          maximum: 1000
+        dbMultiAz:
+          title: Enable Multi-AZ
+          type: boolean
+          description: Recommended for staging/prod; leave off for dev to save cost.
+          default: false
+        dbDeletionProtection:
+          title: Enable Deletion Protection
+          type: boolean
+          default: false
+        existingSecretArn:
+          title: Existing Secrets Manager Secret ARN (optional)
+          type: string
+          description: >-
+            If this app's DB credentials already live in an existing AWS
+            Secrets Manager secret, provide its ARN here. Leave blank to let
+            ACK auto-generate and manage the master password (recommended
+            for net-new databases).
+    - title: Platform Configuration
+      description: >-
+        Advanced settings with sensible defaults, wired straight into the
+        ACK DBInstance/DBSubnetGroup and IRSA annotations. Only change these
+        if you know the target AWS account/network layout.
+      properties:
+        awsAccountId:
+          title: AWS Account ID
+          type: string
+          default: '123456789012'
+        awsRegion:
+          title: AWS Region
+          type: string
+          default: us-east-1
+        dbSecurityGroupId:
+          title: DB Security Group ID
+          type: string
+          default: sg-0000000000000000
+        privateSubnetIdA:
+          title: Private Subnet ID (AZ A)
+          type: string
+          default: subnet-aaaaaaaaaaaaaaaaa
+        privateSubnetIdB:
+          title: Private Subnet ID (AZ B)
+          type: string
+          default: subnet-bbbbbbbbbbbbbbbbb
+        imageRepository:
+          title: Container Image Repository
+          type: string
+          description: ECR repository the built image will be pushed to.
+          default: '123456789012.dkr.ecr.us-east-1.amazonaws.com/java-heavy'
+        imageTag:
+          title: Initial Image Tag
+          type: string
+          default: latest
+  steps:
+    - id: fetch-deploy
+      name: Fetch Kustomize base + overlays from the java-heavy playbook
+      action: fetch:template
+      input:
+        url: ../../../playbooks/java-heavy/skeleton
+        targetPath: playbooks/java-heavy/instances/${{ values.appName }}/deploy
+        sourcePath: apps/${{ values.appName }}
+        values:
+          appName: ${{ values.appName }}
+          namespace: ${{ values.namespace }}
+          environments: ${{ values.environments }}
+          dbInstanceClass: ${{ values.dbInstanceSize }}
+          dbStorageGb: ${{ values.dbStorageGb }}
+          dbMultiAz: ${{ values.dbMultiAz }}
+          dbDeletionProtection: ${{ values.dbDeletionProtection }}
+          awsAccountId: ${{ values.awsAccountId }}
+          awsRegion: ${{ values.awsRegion }}
+          dbSecurityGroupId: ${{ values.dbSecurityGroupId }}
+          privateSubnetIdA: ${{ values.privateSubnetIdA }}
+          privateSubnetIdB: ${{ values.privateSubnetIdB }}
+          imageRepository: ${{ values.imageRepository }}
+          imageTag: ${{ values.imageTag }}
+
+    - id: fetch-dockerfile
+      name: Fetch the multi-stage Dockerfile
+      action: fetch:plain
+      input:
+        url: ../../../playbooks/java-heavy/skeleton/Dockerfile
+        targetPath: playbooks/java-heavy/instances/${{ values.appName }}/Dockerfile
+
+    - id: publish
+      name: Open a pull request with the scaffolded instance
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?owner=your-org&repo=app-mod-playbooks
+        branchName: scaffold/${{ values.appName }}
+        title: 'Add ${{ values.appName }} (java-heavy playbook instance)'
+        description: >-
+          Scaffolds `playbooks/java-heavy/instances/${{ values.appName }}`
+          from the java-heavy-monolith Backstage template. Owner:
+          ${{ values.owner }}. Once merged, Argo CD's playbook-instances
+          ApplicationSet auto-detects the new directory and syncs it - no
+          manual kubectl or aws CLI required.
+        targetBranchName: main
+
+    - id: register
+      name: Register the new component in the software catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: /playbooks/java-heavy/instances/${{ values.appName }}/catalog-info.yaml
+
+  output:
+    links:
+      - title: View the Pull Request
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Instance directory in the repo
+        url: ${{ steps['publish'].output.repoContentsUrl }}
+    text:
+      - title: Next steps
+        content: >-
+          Merge the pull request. Argo CD's `playbook-instances`
+          ApplicationSet (Git directory generator) will pick up
+          `playbooks/java-heavy/instances/${{ values.appName }}/deploy` on
+          its next poll and materialize a matching Application automatically
+          - Kyverno policies gate the manifests, ACK provisions the RDS
+          instance, and Kargo promotes the image through
+          dev -> staging -> prod. No manual kubectl or aws CLI needed.

@@ -1,0 +1,32 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-image-signature-or-registry
+  annotations:
+    policies.kyverno.io/title: Restrict Images to Approved Registry
+    policies.kyverno.io/category: Supply Chain
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    # Demo-simple allow-listing by registry host. A production version of
+    # this rule would use verifyImages against cosign signatures from the
+    # factory's build pipeline; the registry check is kept as a floor even
+    # once signing is added, since it also blocks accidental Docker Hub pulls.
+    - name: allowed-registries-only
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: >-
+          Images must come from the factory's approved ECR registry
+          (<ecr-account-id>.dkr.ecr.<region>.amazonaws.com/*). Public or
+          third-party registries are not permitted for workloads generated
+          by the playbooks.
+        foreach:
+          - list: request.object.spec.containers
+            pattern:
+              image: "<ecr-account-id>.dkr.ecr.<region>.amazonaws.com/*"

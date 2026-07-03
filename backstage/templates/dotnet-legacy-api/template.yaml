@@ -1,0 +1,180 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: dotnet-legacy-api
+  title: Modernize a Legacy .NET API onto EKS with Blue-Green Rollouts
+  description: >-
+    Scaffolds a containerized .NET API workload onto the hub EKS cluster,
+    wired for progressive delivery via Argo Rollouts blue-green
+    (active/preview services) and single sign-on via a Keycloak OIDC client
+    registration. This is the only supported path for onboarding a legacy
+    .NET API into the Application Modernization Factory - no hand-written
+    manifests, no manual `kubectl apply`, no manual Keycloak admin console
+    clicking.
+  tags:
+    - dotnet
+    - eks
+    - blue-green
+    - keycloak
+    - modernization
+spec:
+  owner: platform-engineering
+  type: service
+  parameters:
+    - title: Application Details
+      required:
+        - appName
+        - namespace
+        - environments
+        - owner
+      properties:
+        appName:
+          title: Application Name
+          type: string
+          description: >-
+            Kebab-case name for the application. Used as the Kubernetes
+            resource name prefix and the instance directory under
+            playbooks/dotnet-api/instances/.
+          pattern: '^[a-z][a-z0-9-]*[a-z0-9]$'
+          ui:autofocus: true
+        namespace:
+          title: Target Namespace
+          type: string
+          description: Kubernetes namespace the workload will be deployed into.
+          default: default
+        environments:
+          title: Environments to Deploy To
+          type: array
+          description: >-
+            Environments to scaffold overlays for. Kargo promotes the
+            blue-green rollout dev -> staging -> prod across whichever of
+            these are selected.
+          items:
+            type: string
+            enum:
+              - dev
+              - staging
+              - prod
+          default:
+            - dev
+            - staging
+            - prod
+          uniqueItems: true
+          ui:widget: checkboxes
+        owner:
+          title: Owner / Team
+          type: string
+          description: Team that will own this component in the Backstage catalog.
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+    - title: Identity & Access (Keycloak OIDC)
+      required:
+        - keycloakRealm
+        - oidcRedirectUri
+      properties:
+        keycloakRealm:
+          title: Keycloak Realm
+          type: string
+          description: Realm the OIDC client should be registered in.
+          default: app-mod-factory
+        keycloakClientId:
+          title: Keycloak Client ID
+          type: string
+          description: Defaults to the application name if left blank.
+        oidcRedirectUri:
+          title: OIDC Redirect URI
+          type: string
+          description: Post-login redirect URI Keycloak will send users back to.
+          default: https://${{ values.appName }}.apps.example.com/signin-oidc
+    - title: Platform Configuration
+      description: >-
+        Advanced settings with sensible defaults, wired into the Rollout,
+        Service, and image reference manifests. Only change these if you
+        know the target AWS account/registry layout.
+      properties:
+        imageRepository:
+          title: Container Image Repository
+          type: string
+          description: ECR repository the built image will be pushed to.
+          default: '123456789012.dkr.ecr.us-east-1.amazonaws.com/dotnet-api'
+        imageTag:
+          title: Initial Image Tag
+          type: string
+          default: latest
+        activeServicePort:
+          title: Active Service Port
+          type: integer
+          default: 80
+        previewServicePort:
+          title: Preview Service Port
+          type: integer
+          default: 8080
+  steps:
+    - id: fetch-deploy
+      name: Fetch Kustomize base + overlays from the dotnet-api playbook
+      action: fetch:template
+      input:
+        url: ../../../playbooks/dotnet-api/skeleton
+        targetPath: playbooks/dotnet-api/instances/${{ values.appName }}/deploy
+        sourcePath: apps/${{ values.appName }}
+        values:
+          appName: ${{ values.appName }}
+          namespace: ${{ values.namespace }}
+          environments: ${{ values.environments }}
+          keycloakRealm: ${{ values.keycloakRealm }}
+          keycloakClientId: ${{ values.keycloakClientId }}
+          oidcRedirectUri: ${{ values.oidcRedirectUri }}
+          imageRepository: ${{ values.imageRepository }}
+          imageTag: ${{ values.imageTag }}
+          activeServicePort: ${{ values.activeServicePort }}
+          previewServicePort: ${{ values.previewServicePort }}
+
+    - id: fetch-dockerfile
+      name: Fetch the multi-stage Dockerfile
+      action: fetch:plain
+      input:
+        url: ../../../playbooks/dotnet-api/skeleton/Dockerfile
+        targetPath: playbooks/dotnet-api/instances/${{ values.appName }}/Dockerfile
+
+    - id: publish
+      name: Open a pull request with the scaffolded instance
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?owner=your-org&repo=app-mod-playbooks
+        branchName: scaffold/${{ values.appName }}
+        title: 'Add ${{ values.appName }} (dotnet-api playbook instance)'
+        description: >-
+          Scaffolds `playbooks/dotnet-api/instances/${{ values.appName }}`
+          from the dotnet-legacy-api Backstage template. Owner:
+          ${{ values.owner }}. Once merged, Argo CD's playbook-instances
+          ApplicationSet auto-detects the new directory and syncs it - no
+          manual kubectl or aws CLI required.
+        targetBranchName: main
+
+    - id: register
+      name: Register the new component in the software catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: /playbooks/dotnet-api/instances/${{ values.appName }}/catalog-info.yaml
+
+  output:
+    links:
+      - title: View the Pull Request
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Instance directory in the repo
+        url: ${{ steps['publish'].output.repoContentsUrl }}
+    text:
+      - title: Next steps
+        content: >-
+          Merge the pull request. Argo CD's `playbook-instances`
+          ApplicationSet (Git directory generator) will pick up
+          `playbooks/dotnet-api/instances/${{ values.appName }}/deploy` on
+          its next poll and materialize a matching Application automatically
+          - Kyverno policies gate the manifests, the Argo Rollouts
+          controller drives the blue-green active/preview cutover, the
+          Keycloak OIDC client registration secures the API, and Kargo
+          promotes the rollout through dev -> staging -> prod. No manual
+          kubectl or aws CLI needed.

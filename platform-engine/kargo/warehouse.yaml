@@ -1,0 +1,38 @@
+# One Warehouse per playbook-generated app instance. Backstage scaffolding
+# for a new instance is expected to also emit a Warehouse (copy of one of
+# these, renamed) alongside its deploy/ directory — see platform-engine/README.md.
+#
+# Example instances shown here match platform-engine/CONVENTIONS.md:
+#   playbooks/java-heavy/instances/claims-service
+#   playbooks/dotnet-api/instances/billing-api
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: claims-service
+  namespace: app-mod-factory
+spec:
+  subscriptions:
+    - image:
+        repoURL: <ecr-account-id>.dkr.ecr.<region>.amazonaws.com/java-heavy/claims-service
+        semverConstraint: ">=1.0.0"
+        discoveryLimit: 10
+    - git:
+        repoURL: https://github.com/your-org/app-mod-playbooks.git
+        includePaths:
+          - playbooks/java-heavy/instances/claims-service/deploy
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: billing-api
+  namespace: app-mod-factory
+spec:
+  subscriptions:
+    - image:
+        repoURL: <ecr-account-id>.dkr.ecr.<region>.amazonaws.com/dotnet-api/billing-api
+        semverConstraint: ">=1.0.0"
+        discoveryLimit: 10
+    - git:
+        repoURL: https://github.com/your-org/app-mod-playbooks.git
+        includePaths:
+          - playbooks/dotnet-api/instances/billing-api/deploy

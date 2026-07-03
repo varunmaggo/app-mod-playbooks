@@ -1,0 +1,124 @@
+# Stage progression dev -> staging -> prod for the claims-service instance.
+# (billing-api would get an identical set of 3 Stages substituting the
+# warehouse/path names — omitted here for brevity, same pattern applies.)
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: claims-service-dev
+  namespace: app-mod-factory
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: claims-service
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      steps:
+        - uses: git-clone
+          config:
+            repoURL: https://github.com/your-org/app-mod-playbooks.git
+            checkout:
+              - branch: main
+                path: ./src
+        - uses: kustomize-set-image
+          config:
+            path: ./src/playbooks/java-heavy/instances/claims-service/deploy/overlays/dev
+            images:
+              - image: <ecr-account-id>.dkr.ecr.<region>.amazonaws.com/java-heavy/claims-service
+        - uses: git-commit
+          config:
+            path: ./src
+            message: "chore(kargo): promote claims-service to dev"
+        - uses: git-push
+          config:
+            path: ./src
+        # Argo CD's ApplicationSet-generated Application for this instance
+        # auto-syncs on the resulting commit; no argocd sync call needed.
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: claims-service-staging
+  namespace: app-mod-factory
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: claims-service
+      sources:
+        stages:
+          - claims-service-dev
+  promotionTemplate:
+    spec:
+      steps:
+        - uses: git-clone
+          config:
+            repoURL: https://github.com/your-org/app-mod-playbooks.git
+            checkout:
+              - branch: main
+                path: ./src
+        - uses: http
+          as: dev-health-check
+          config:
+            method: GET
+            url: https://claims-service.dev.factory.internal/actuator/health
+            successExpression: response.status == 200
+        - uses: kustomize-set-image
+          config:
+            path: ./src/playbooks/java-heavy/instances/claims-service/deploy/overlays/staging
+            images:
+              - image: <ecr-account-id>.dkr.ecr.<region>.amazonaws.com/java-heavy/claims-service
+        - uses: git-commit
+          config:
+            path: ./src
+            message: "chore(kargo): promote claims-service to staging"
+        - uses: git-push
+          config:
+            path: ./src
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: claims-service-prod
+  namespace: app-mod-factory
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: claims-service
+      sources:
+        stages:
+          - claims-service-staging
+  promotionTemplate:
+    spec:
+      steps:
+        - uses: git-clone
+          config:
+            repoURL: https://github.com/your-org/app-mod-playbooks.git
+            checkout:
+              - branch: main
+                path: ./src
+        - uses: http
+          as: staging-health-check
+          config:
+            method: GET
+            url: https://claims-service.staging.factory.internal/actuator/health
+            successExpression: response.status == 200
+        - uses: kustomize-set-image
+          config:
+            path: ./src/playbooks/java-heavy/instances/claims-service/deploy/overlays/prod
+            images:
+              - image: <ecr-account-id>.dkr.ecr.<region>.amazonaws.com/java-heavy/claims-service
+        - uses: git-commit
+          config:
+            path: ./src
+            message: "chore(kargo): promote claims-service to prod"
+        - uses: git-push
+          config:
+            path: ./src
+        # prod Stage has autoPromotionEnabled: false at the Project level
+        # (see project.yaml) — a human approves promotion into this Stage
+        # via `kargo promote`, keeping prod changes deliberate even though
+        # everything downstream of that click is still git-driven.

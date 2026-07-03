@@ -1,0 +1,44 @@
+# Helm values for the upstream `argo-cd` chart (argoproj/argo-helm).
+#
+# Bootstrap (one-time, run by platform team before any self-service flow
+# exists — not part of the ongoing GitOps loop):
+#
+#   helm repo add argo https://argoproj.github.io/argo-helm
+#   helm install argocd argo/argo-cd \
+#     --namespace argocd --create-namespace \
+#     -f platform-engine/argocd/install/values.yaml
+#
+# After this one-time install, `platform-engine/argocd/applications/root-app.yaml`
+# is applied once to bootstrap the App-of-Apps; everything after that is
+# driven by git commits, never manual kubectl/helm/aws CLI.
+
+global:
+  domain: argocd.factory.internal
+
+configs:
+  cm:
+    # Git generator (directories) polling interval for ApplicationSets.
+    timeout.reconciliation: 60s
+    application.resourceTrackingMethod: annotation
+  params:
+    server.insecure: true # demo only: TLS terminated at an ALB/ingress in real envs
+
+server:
+  autoscaling:
+    enabled: false
+  ingress:
+    enabled: true
+    ingressClassName: alb
+
+repoServer:
+  replicas: 1
+
+applicationSet:
+  enabled: true
+  replicas: 1
+
+controller:
+  replicas: 1
+
+dex:
+  enabled: false # OIDC handled by Keycloak per-app (see /playbooks), not for ArgoCD admin in this demo

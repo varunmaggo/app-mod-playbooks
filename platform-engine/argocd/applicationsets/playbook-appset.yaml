@@ -1,0 +1,54 @@
+# ApplicationSet using the Git generator (directories) pattern.
+#
+# Directory convention (see platform-engine/CONVENTIONS.md):
+#   playbooks/<playbook-name>/instances/<app-name>/deploy
+#
+# Every time Backstage scaffolds a new app instance and commits it under
+# that path, this generator picks up the new directory on the next repo
+# poll and Argo CD materializes a matching Application automatically.
+# No manual `argocd app create` / kubectl apply is ever required.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: playbook-instances
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/your-org/app-mod-playbooks.git
+        revision: main
+        directories:
+          # Matches playbooks/<playbook-name>/instances/<app-name>
+          - path: playbooks/*/instances/*
+  template:
+    metadata:
+      name: "{{index .Path.Segments 0}}-{{index .Path.Segments 2}}"
+      labels:
+        app-mod-factory/playbook: "{{index .Path.Segments 0}}"
+        app-mod-factory/app: "{{index .Path.Segments 2}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/your-org/app-mod-playbooks.git
+        targetRevision: main
+        # Each instance's deploy/overlays/dev is the default sync target;
+        # Kargo promotes changes into staging/prod overlays independently
+        # (see platform-engine/kargo/stages.yaml).
+        path: "{{.Path.Path}}/deploy/overlays/dev"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{index .Path.Segments 2}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

@@ -1,0 +1,31 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-non-root
+  annotations:
+    policies.kyverno.io/title: Require runAsNonRoot
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: >-
+          Containers must set securityContext.runAsNonRoot=true, at the pod
+          or container level. All playbook base templates set this by
+          default — do not override it in an overlay.
+        anyPattern:
+          - spec:
+              securityContext:
+                runAsNonRoot: "true"
+          - spec:
+              containers:
+                - securityContext:
+                    runAsNonRoot: "true"

@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ${{ values.namespace }}-dev
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: Deployment
+      name: ${{ values.appName }}
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: DBInstance
+      name: ${{ values.appName }}-db
+    patch: |-
+      - op: replace
+        path: /spec/dbInstanceClass
+        value: db.t4g.micro
+      - op: replace
+        path: /spec/allocatedStorage
+        value: 20
+      - op: replace
+        path: /spec/multiAZ
+        value: false
+      - op: replace
+        path: /spec/deletionProtection
+        value: false
