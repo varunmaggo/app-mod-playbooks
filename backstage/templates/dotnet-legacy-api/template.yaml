@@ -142,7 +142,7 @@ spec:
       name: Open a pull request with the scaffolded instance
       action: publish:github:pull-request
       input:
-        repoUrl: github.com?owner=your-org&repo=app-mod-playbooks
+        repoUrl: github.com?owner=varunmaggo&repo=app-mod-playbooks
         branchName: scaffold/${{ values.appName }}
         title: 'Add ${{ values.appName }} (dotnet-api playbook instance)'
         description: >-
@@ -151,14 +151,14 @@ spec:
           ${{ values.owner }}. Once merged, Argo CD's playbook-instances
           ApplicationSet auto-detects the new directory and syncs it - no
           manual kubectl or aws CLI required.
-        targetBranchName: main
+        targetBranchName: claude/application-build-3sik1d
 
     - id: register
       name: Register the new component in the software catalog
       action: catalog:register
       input:
         repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
-        catalogInfoPath: /playbooks/dotnet-api/instances/${{ values.appName }}/catalog-info.yaml
+        catalogInfoPath: /playbooks/dotnet-api/instances/${{ values.appName }}/deploy/catalog-info.yaml
 
   output:
     links:

@@ -17,7 +17,7 @@ spec:
         semverConstraint: ">=1.0.0"
         discoveryLimit: 10
     - git:
-        repoURL: https://github.com/your-org/app-mod-playbooks.git
+        repoURL: https://github.com/varunmaggo/app-mod-playbooks.git
         includePaths:
           - playbooks/java-heavy/instances/claims-service/deploy
 ---
@@ -33,6 +33,6 @@ spec:
         semverConstraint: ">=1.0.0"
         discoveryLimit: 10
     - git:
-        repoURL: https://github.com/your-org/app-mod-playbooks.git
+        repoURL: https://github.com/varunmaggo/app-mod-playbooks.git
         includePaths:
           - playbooks/dotnet-api/instances/billing-api/deploy

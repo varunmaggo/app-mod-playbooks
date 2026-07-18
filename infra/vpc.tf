@@ -28,13 +28,13 @@ module "vpc" {
   # Required so the AWS EKS/ELB controllers can auto-discover subnets for
   # internal vs internet-facing load balancers created by future workloads.
   public_subnet_tags = {
-    "kubernetes.io/role/elb"                     = "1"
-    "kubernetes.io/cluster/${var.cluster_name}"  = "shared"
+    "kubernetes.io/role/elb"                    = "1"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 
   private_subnet_tags = {
-    "kubernetes.io/role/internal-elb"            = "1"
-    "kubernetes.io/cluster/${var.cluster_name}"  = "shared"
+    "kubernetes.io/role/internal-elb"           = "1"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 
   tags = var.tags

@@ -18,9 +18,9 @@ spec:
       steps:
         - uses: git-clone
           config:
-            repoURL: https://github.com/your-org/app-mod-playbooks.git
+            repoURL: https://github.com/varunmaggo/app-mod-playbooks.git
             checkout:
-              - branch: main
+              - branch: claude/application-build-3sik1d
                 path: ./src
         - uses: kustomize-set-image
           config:
@@ -55,9 +55,9 @@ spec:
       steps:
         - uses: git-clone
           config:
-            repoURL: https://github.com/your-org/app-mod-playbooks.git
+            repoURL: https://github.com/varunmaggo/app-mod-playbooks.git
             checkout:
-              - branch: main
+              - branch: claude/application-build-3sik1d
                 path: ./src
         - uses: http
           as: dev-health-check
@@ -96,9 +96,9 @@ spec:
       steps:
         - uses: git-clone
           config:
-            repoURL: https://github.com/your-org/app-mod-playbooks.git
+            repoURL: https://github.com/varunmaggo/app-mod-playbooks.git
             checkout:
-              - branch: main
+              - branch: claude/application-build-3sik1d
                 path: ./src
         - uses: http
           as: staging-health-check

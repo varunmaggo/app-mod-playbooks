@@ -36,9 +36,9 @@ module "eks" {
 # EBS CSI addon depends on the IRSA role in iam.tf being available before
 # the addon can assume it via the pod-identity/service-account annotation.
 resource "aws_eks_addon" "ebs_csi" {
-  cluster_name             = module.eks.cluster_name
-  addon_name               = "aws-ebs-csi-driver"
-  service_account_role_arn = aws_iam_role.ebs_csi.arn
+  cluster_name                = module.eks.cluster_name
+  addon_name                  = "aws-ebs-csi-driver"
+  service_account_role_arn    = aws_iam_role.ebs_csi.arn
   resolve_conflicts_on_update = "OVERWRITE"
 
   depends_on = [module.eks]
