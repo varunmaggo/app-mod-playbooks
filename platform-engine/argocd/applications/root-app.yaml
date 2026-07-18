@@ -9,8 +9,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-org/app-mod-playbooks.git
-    targetRevision: main
+    repoURL: https://github.com/varunmaggo/app-mod-playbooks.git
+    targetRevision: claude/application-build-3sik1d
     path: platform-engine
     directory:
       recurse: true

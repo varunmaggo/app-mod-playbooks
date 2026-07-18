@@ -1,0 +1,16 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.appName }}
+  description: Legacy .NET API modernized onto EKS via the dotnet-legacy-api playbook.
+  annotations:
+    backstage.io/kubernetes-namespace: ${{ values.namespace }}
+  tags:
+    - dotnet
+    - blue-green
+    - dotnet-api-playbook
+spec:
+  type: service
+  lifecycle: production
+  owner: ${{ values.owner }}
+  system: app-mod-playbooks-factory
